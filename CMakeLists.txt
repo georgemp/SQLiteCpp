@@ -35,7 +35,17 @@ else (MSVC)
     set(CPPCHECK_ARG_TEMPLATE   "--template=gcc")
     # Useful compile flags and extra warnings
     add_compile_options(-fstack-protector -Wall -Wextra -Wpedantic -Wno-long-long -Wswitch-enum -Wshadow -Winline)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-c++0x-compat") # C++ only
+
+    #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-c++0x-compat") # C++ only
+    if (NOT CMAKE_CXX_STD_VERSION) 
+        set(CMAKE_CXX_STD_VERSION "c++1z")
+    endif (NOT CMAKE_CXX_STD_VERSION)
+
+    STRING(REGEX MATCH "-std=" match_result "${CMAKE_CXX_FLAGS}")
+    IF(NOT "${match_result}" MATCHES "-std=")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=${CMAKE_CXX_STD_VERSION}")
+    ENDIF(NOT "${match_result}" MATCHES "-std=")
+
     if (CMAKE_COMPILER_IS_GNUCXX)
         # GCC flags
         if (SQLITECPP_USE_GCOV AND CMAKE_COMPILER_IS_GNUCXX)
@@ -110,6 +120,8 @@ set(SQLITECPP_SRC
  ${PROJECT_SOURCE_DIR}/src/Exception.cpp
  ${PROJECT_SOURCE_DIR}/src/Statement.cpp
  ${PROJECT_SOURCE_DIR}/src/Transaction.cpp
+ ${PROJECT_SOURCE_DIR}/src/Errors.cpp
+ ${PROJECT_SOURCE_DIR}/src/ExceptionsMapper.cpp
 )
 source_group(src FILES ${SQLITECPP_SRC})
 
@@ -125,6 +137,8 @@ set(SQLITECPP_INC
  ${PROJECT_SOURCE_DIR}/include/SQLiteCpp/Transaction.h
  ${PROJECT_SOURCE_DIR}/include/SQLiteCpp/Utils.h
  ${PROJECT_SOURCE_DIR}/include/SQLiteCpp/VariadicBind.h
+ ${PROJECT_SOURCE_DIR}/include/SQLiteCpp/Errors.h
+ ${PROJECT_SOURCE_DIR}/include/SQLiteCpp/ExceptionsMapper.h
 )
 source_group(include FILES ${SQLITECPP_INC})
 
@@ -195,7 +209,13 @@ install(EXPORT ${PROJECT_NAME}Config DESTINATION lib/cmake/${PROJECT_NAME})
 ## Build provided copy of SQLite3 C library ##
 
 # TODO 
-#find_package(sqlite3)
+option(SQLITECPP_SYSTEM_SQLITE "Use system sqlite." OFF)
+if (SQLITECPP_SYSTEM_SQLITE)
+find_package(sqlite3)
+if (SQLITE3_FOUND) 
+    include_directories(${SQLITE3_INCLUDE_DIRS})
+endif (SQLITE3_FOUND)
+endif (SQLITECPP_SYSTEM_SQLITE)
 #if(sqlite3_VERSION VERSION_LESS "3.19")
 #    set_target_properties(SQLiteCpp PROPERTIES COMPILE_FLAGS "-DSQLITECPP_HAS_MEM_STRUCT")
 #endif()
